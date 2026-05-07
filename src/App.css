@@ -1,0 +1,297 @@
+@import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@600;700&display=swap');
+
+/* MAIN LAYOUT (App Style!) */
+.app-main-layout {
+  background: linear-gradient(135deg, #FFF0F5, #e0f7fa);
+  min-height: 100vh;
+  font-family: 'Quicksand', sans-serif;
+  color: #555;
+  display: flex; /* Sidebar on left, content on right */
+}
+
+/* 🧭 LEFT SIDEBAR NAVIGATION */
+.side-nav {
+  width: 130px;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  border-right: 2px solid rgba(255, 182, 193, 0.3);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 30px 0;
+  gap: 20px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  box-shadow: 2px 0 15px rgba(0,0,0,0.05);
+}
+
+.nav-logo { font-size: 2rem; margin-bottom: 20px; animation: float 3s ease-in-out infinite; }
+
+.nav-btn {
+  background: transparent; border: none; font-family: 'Quicksand'; font-weight: 700;
+  color: #AAA; font-size: 1rem; cursor: pointer; padding: 15px 10px;
+  border-radius: 16px; transition: 0.3s; width: 80%;
+}
+
+.nav-btn:hover { background: rgba(255, 182, 193, 0.2); color: #FFB6C1; }
+.nav-btn.active { background: #FFB6C1; color: white; box-shadow: 0 4px 10px rgba(255, 182, 193, 0.4); }
+
+/* 🌟 CENTER STAGE (Main Content Area) */
+.center-stage {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 20px;
+  overflow-y: auto;
+  height: 100vh;
+}
+
+h1, h2 { color: #FFB6C1; text-shadow: 2px 2px 0px #FFF; font-size: 2.5rem; margin-top: 0; margin-bottom: 20px; }
+
+/* 📸 CAMERA BOX */
+.camera-box {
+  position: relative; background: rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(12px); border: 2px solid rgba(255, 255, 255, 0.6);
+  padding: 15px; border-radius: 30px; box-shadow: 0 15px 35px rgba(255, 182, 193, 0.2);
+  margin-bottom: 25px;
+}
+
+.camera-inner { position: relative; overflow: hidden; border-radius: 20px; }
+.mirror-video { width: 100%; max-width: 600px; display: block; transform: scaleX(-1); }
+
+.countdown-overlay {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  display: flex; justify-content: center; align-items: center;
+  font-size: 10rem; color: white; text-shadow: 0 0 30px #FFB6C1;
+  background: rgba(255, 255, 255, 0.3); z-index: 10;
+}
+
+/* 🎀 STICKERS & EDITOR */
+.sticker-overlay {
+  position: absolute; width: 100px; height: 100px;
+  cursor: grab; z-index: 5; user-select: none;
+  transform-origin: center center; /* Spins from the middle! */
+  transition: border 0.2s;
+}
+
+.sticker-overlay:active { cursor: grabbing; }
+
+/* Highlight the sticker when editing! */
+.sticker-overlay.is-editing {
+  border: 3px dashed #FFB6C1;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.sticker-panel, .sticker-editor-panel {
+  background: rgba(255, 255, 255, 0.6); border-radius: 20px;
+  padding: 15px 25px; margin-bottom: 20px; text-align: center;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+}
+
+.sticker-panel h3, .sticker-editor-panel h3 { color: #FFB6C1; margin: 0 0 15px 0; }
+.sticker-list { display: flex; gap: 15px; justify-content: center; }
+.sticker-pick-btn {
+  background: white; border: 2px solid #EEE; padding: 10px;
+  border-radius: 16px; cursor: pointer; transition: 0.2s;
+}
+.sticker-pick-btn:hover { border-color: #FFB6C1; transform: scale(1.1) rotate(5deg); }
+.sticker-pick-btn img { width: 40px; height: 40px; }
+
+/* The new Sliders! */
+.editor-controls { display: flex; align-items: center; gap: 20px; font-weight: bold; color: #777;}
+.editor-controls input[type="range"] { accent-color: #FFB6C1; cursor: pointer; }
+.delete-sticker-btn {
+  background: #ffebee; color: #ff5252; border: none; padding: 8px 15px;
+  border-radius: 12px; font-weight: bold; cursor: pointer; transition: 0.2s;
+}
+.delete-sticker-btn:hover { background: #ff5252; color: white; transform: scale(1.05); }
+
+/* MAIN BUTTONS */
+.filter-row { 
+  display: flex; 
+  gap: 10px; 
+  margin-bottom: 20px; 
+  flex-wrap: wrap;          /* Let buttons wrap to a new line */
+  justify-content: center;  /* Keep them centered */
+  max-width: 400px;         /* Keeps them looking neat */
+}
+.filter-btn {
+  background: white; color: #888; border: 2px solid #EEE; width: 50px; height: 50px;
+  font-size: 1.5rem; border-radius: 50%; cursor: pointer; transition: 0.2s;
+}
+.filter-btn:hover { border-color: #FFB6C1; transform: scale(1.1); }
+.pink-f { color: #FFB6C1; border-color: #FFF0F5; }
+
+.giant-snap-btn {
+  background-color: #FFB6C1; color: white; border: none; padding: 15px 40px;
+  font-size: 1.4rem; font-family: 'Quicksand'; font-weight: 700;
+  border-radius: 50px; cursor: pointer; transition: 0.2s;
+  box-shadow: 0 8px 20px rgba(255, 182, 193, 0.5);
+}
+.giant-snap-btn:hover { transform: translateY(-3px) scale(1.02); background-color: #FF9EAE; }
+
+/* 📚 SCRAPBOOK STYLING (The Grid Layout) */
+.scrapbook-stage { max-width: 1200px; margin: 0 auto; }
+.empty-text { color: #AAA; font-size: 1.2rem; margin-top: 50px; }
+
+.scrapbook-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 30px; width: 100%; padding: 20px;
+}
+
+.scrapbook-card-v2 {
+  background: white; border-radius: 24px; overflow: hidden;
+  box-shadow: 0 10px 25px rgba(255, 182, 193, 0.2);
+  display: flex; flex-direction: column; transition: transform 0.3s;
+}
+.scrapbook-card-v2:hover { transform: translateY(-5px); }
+
+.card-image-container { position: relative; background: #FFF0F5; padding: 15px; text-align: center; }
+.scrapbook-img { width: 100%; border-radius: 12px; border: 6px solid white; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+
+.delete-memory-btn {
+  position: absolute; top: 5px; right: 5px; background: rgba(255, 255, 255, 0.8);
+  border: none; border-radius: 50%; width: 35px; height: 35px;
+  cursor: pointer; font-size: 1.2rem; transition: 0.2s;
+}
+.delete-memory-btn:hover { background: #ff5252; color: white; transform: scale(1.1); }
+
+.card-details { padding: 20px; display: flex; flex-direction: column; gap: 10px; flex: 1; background: white; }
+.date-text { color: #CCC; font-weight: 700; font-size: 0.8rem; }
+
+.memory-input {
+  width: 100%; height: 80px; border: 2px dashed #FFF0F5; border-radius: 12px;
+  padding: 10px; font-family: 'Quicksand'; font-size: 1rem; color: #555;
+  resize: none; outline: none; background: #fafafa; transition: 0.3s;
+}
+.memory-input:focus { border-color: #FFB6C1; background: white; }
+
+.download-memory-btn {
+  text-align: center; background: #FFF0F5; color: #FFB6C1; text-decoration: none;
+  font-weight: bold; padding: 10px; border-radius: 12px; transition: 0.2s;
+  margin-top: auto;
+}
+.download-memory-btn:hover { background: #FFB6C1; color: white; }
+
+/* Smooth Animations */
+.animate-fade-in { animation: fadeIn 0.4s ease-out; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.animate-slide-up { animation: slideUp 0.3s ease-out; }
+@keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+
+/* NEW: Layout for our buttons side-by-side */
+.action-button-row {
+  display: flex;
+  gap: 15px;
+  width: 100%;
+  justify-content: center;
+  flex-wrap: wrap; /* Allows them to stack if screen is too tiny */
+}
+
+/* 📱 MOBILE RESPONSIVENESS SUPERPOWERS! */
+@media (max-width: 768px) {
+  .app-main-layout {
+    flex-direction: column; /* Stack vertically instead of side-by-side */
+  }
+
+  /* Turn the sidebar into a mobile bottom tab bar! */
+  .side-nav {
+    width: 100%;
+    height: auto;
+    flex-direction: row;
+    justify-content: space-around;
+    padding: 10px;
+    position: fixed;
+    bottom: 0;
+    top: auto;
+    z-index: 100;
+    border-right: none;
+    border-top: 2px solid rgba(255, 182, 193, 0.3);
+  }
+
+  .nav-btn { width: auto; padding: 10px 20px; }
+  
+  /* Give the center stage room so the bottom bar doesn't hide anything */
+  .center-stage { padding-bottom: 100px; padding-top: 20px; } 
+  
+  h1 { font-size: 2rem; text-align: center; }
+  
+  .camera-box { padding: 10px; }
+  
+  .action-button-row { flex-direction: column; }
+  .giant-snap-btn { width: 100%; padding: 15px; }
+  
+  .scrapbook-grid { grid-template-columns: 1fr; /* 1 column on phones */ }
+}
+
+/* 🪄 THE MAGIC MOVING BACKGROUND */
+.animated-bg {
+  background: linear-gradient(-45deg, #FFB6C1, #FFF0F5, #B2FBA5, #AEC6CF);
+  background-size: 400% 400%;
+  animation: gradientShift 10s ease infinite;
+  border-radius: 20px;
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 1; /* Sits BEHIND the person */
+}
+
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* We need to update the camera inner to handle the layers */
+.camera-inner {
+  position: relative;
+  overflow: hidden;
+  border-radius: 20px;
+  min-height: 400px; /* Gives the AI canvas room to load */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #f0f0f0; /* Temporary background while AI loads */
+}
+
+/* The invisible video feeding the AI */
+/* The invisible video feeding the AI */
+/* 📸 THE CAMERA BOX (The Layer Cake!) */
+/* 📸 CAMERA BOX (Cleaned up!) */
+.camera-box {
+  position: relative; background: rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(12px); border: 2px solid rgba(255, 255, 255, 0.6);
+  padding: 15px; border-radius: 30px; box-shadow: 0 15px 35px rgba(255, 182, 193, 0.2);
+  margin-bottom: 25px;
+}
+
+.camera-inner { 
+  position: relative; 
+  overflow: hidden; 
+  border-radius: 20px; 
+}
+
+.mirror-video { 
+  width: 100%; 
+  max-width: 600px; 
+  display: block; 
+  transform: scaleX(-1); 
+}
+
+.countdown-overlay {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  display: flex; justify-content: center; align-items: center;
+  font-size: 10rem; color: white; text-shadow: 0 0 30px #FFB6C1;
+  background: rgba(255, 255, 255, 0.3); z-index: 10;
+}
+
+/* 🎀 STICKERS & EDITOR */
+.sticker-overlay {
+  position: absolute; width: 100px; height: 100px;
+  cursor: grab; z-index: 5; user-select: none;
+  transform-origin: center center; 
+  transition: border 0.2s;
+}
