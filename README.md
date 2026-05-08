@@ -5,7 +5,7 @@ Welcome to **My Cute Photobooth**, a fully responsive, browser-based digital pho
 This project brings the magic of a Japanese *Purikura* sticker booth straight to your laptop or phone. Snap a single picture or take a classic 4-pic photostrip, decorate it with draggable stickers, apply aesthetic filters, and save your memories in a persistent digital scrapbook. 
 
 ## 🌟 Live Demo
-*(Replace this line with your Vercel link once you deploy!)* -> [Click here to take a picture!](https://my-cute-photobooth.vercel.app/)
+ [Click here to take a picture!](https://my-cute-photobooth.vercel.app/)
 
 ---
 
