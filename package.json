@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@tensorflow/tfjs-converter": "^4.22.0",
+    "framer-motion": "^12.43.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5"
   },

@@ -1,23 +1,65 @@
 import { useRef, useEffect, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import './App.css';
+import FloatingBackground from './components/FloatingBackground';
+import CursorTrail from './components/CursorTrail';
+import Mascot from './components/Mascot';
+import Toasts from './components/Toasts';
+import Confetti from './components/Confetti';
+import PolaroidPrint from './components/PolaroidPrint';
+import ThemeSwitcher, { THEMES } from './components/ThemeSwitcher';
+import { sounds, setMuted, isMuted } from './sounds';
+
+// Sticker categories for the redesigned panel
+const STICKER_CATEGORIES = [
+  { id: 'all', label: '✨ All' },
+  { id: 'flowers', label: '🌸 Flowers' },
+  { id: 'animals', label: '🐾 Animals' },
+  { id: 'clouds', label: '☁️ Clouds' },
+  { id: 'bows', label: '🎀 Bows' },
+  { id: 'cute', label: '💖 Cute' },
+];
+
+const STICKER_META = {
+  'tulip.png': 'flowers',
+  'sunflower.png': 'flowers',
+  'ribbon.png': 'bows',
+  'cute1.png': 'cute',
+  'kitty.png': 'animals',
+  'chick.png': 'animals',
+  'clouds.png': 'clouds',
+  'teddy.png': 'animals',
+};
 
 export default function App() {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
-  
+
   const [currentView, setCurrentView] = useState('booth');
   const [photos, setPhotos] = useState(() => {
     const savedPhotos = localStorage.getItem('myCutePhotos');
     return savedPhotos ? JSON.parse(savedPhotos) : [];
   });
 
-  const [countdown, setCountdown] = useState(null); 
-  const [filter, setFilter] = useState('none'); 
+  const [countdown, setCountdown] = useState(null);
+  const [filter, setFilter] = useState('none');
   const [isTakingStrip, setIsTakingStrip] = useState(false);
-  
-  const availableStickers = ['tulip.png', 'sunflower.png', 'ribbon.png','cute1.png', 'kitty.png', 'chick.png', 'clouds.png','teddy.png'];
+
+  const availableStickers = ['tulip.png', 'sunflower.png', 'ribbon.png', 'cute1.png', 'kitty.png', 'chick.png', 'clouds.png', 'teddy.png'];
   const [activeStickers, setActiveStickers] = useState([]);
   const [editingStickerId, setEditingStickerId] = useState(null);
+
+  // New premium state
+  const [cameraStarted, setCameraStarted] = useState(false);
+  const [toasts, setToasts] = useState([]);
+  const [confettiTrigger, setConfettiTrigger] = useState(0);
+  const [print, setPrint] = useState(null);
+  const [activeTab, setActiveTab] = useState('stickers');
+  const [soundsOn, setSoundsOn] = useState(true);
+  const [theme, setTheme] = useState('default');
+  const [stickerCategory, setStickerCategory] = useState('all');
+  const [stickerSearch, setStickerSearch] = useState('');
+  const [isCameraOn, setIsCameraOn] = useState(false);
 
   useEffect(() => {
     localStorage.setItem('myCutePhotos', JSON.stringify(photos));
@@ -28,6 +70,8 @@ export default function App() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
         if (videoRef.current) videoRef.current.srcObject = stream;
+        setCameraStarted(true);
+        setIsCameraOn(true);
       } catch (err) {
         alert("Oops! I need camera access! 🥺");
       }
@@ -35,20 +79,46 @@ export default function App() {
     if (currentView === 'booth') startCamera();
   }, [currentView]);
 
+  // apply theme
+  useEffect(() => {
+    const active = THEMES.find((t) => t.id === theme) || THEMES[0];
+    document.documentElement.style.setProperty('--pink', active.primary);
+    document.documentElement.style.setProperty('--baby-pink', active.light);
+  }, [theme]);
+
+  // toasts auto-dismiss
+  useEffect(() => {
+    if (toasts.length === 0) return;
+    const timer = setTimeout(() => setToasts((prev) => prev.slice(1)), 2600);
+    return () => clearTimeout(timer);
+  }, [toasts]);
+
+  const addToast = (message, type = 'info') => {
+    setToasts((prev) => [...prev, { id: Date.now() + Math.random(), message, type }]);
+  };
+
+  const toggleSound = () => {
+    const next = !soundsOn;
+    setSoundsOn(next);
+    setMuted(!next);
+    if (next) sounds.click();
+  };
+
   // ==========================================
   // STICKER LOGIC
   // ==========================================
   const addSticker = (stickerName) => {
     const newId = Date.now();
     setActiveStickers(prev => [...prev, { id: newId, name: stickerName, x: 100, y: 100, scale: 1, rotation: 0 }]);
-    setEditingStickerId(newId); 
+    setEditingStickerId(newId);
+    sounds.sticker();
   };
 
   const onStickerDrag = (id, e) => {
     const cameraBox = document.querySelector('.camera-inner');
     if (!cameraBox) return;
     const bounds = cameraBox.getBoundingClientRect();
-    let newX = e.clientX - bounds.left - 50; 
+    let newX = e.clientX - bounds.left - 50;
     let newY = e.clientY - bounds.top - 50;
     setActiveStickers(prev => prev.map(stk => (stk.id === id ? { ...stk, x: newX, y: newY } : stk)));
   };
@@ -65,33 +135,26 @@ export default function App() {
   // ==========================================
   // THE NEW MAGIC DRAWING LOGIC! 🖌️
   // ==========================================
-  // We added "async" so it can wait for stickers to load
   const drawBaseImage = async (exportCanvas, exportCtx) => {
     const video = videoRef.current;
     if (!video || video.videoWidth === 0) return;
-    
+
     exportCanvas.width = video.videoWidth;
     exportCanvas.height = video.videoHeight;
-    
-    // 1. Draw the Video (Flipped like a mirror)
+
     exportCtx.translate(exportCanvas.width, 0);
     exportCtx.scale(-1, 1);
-    exportCtx.filter = filter; 
+    exportCtx.filter = filter;
     exportCtx.drawImage(video, 0, 0, exportCanvas.width, exportCanvas.height);
-    
-    // 2. RESET the flip and filter so stickers draw normally!
-    exportCtx.setTransform(1, 0, 0, 1, 0, 0); 
+
+    exportCtx.setTransform(1, 0, 0, 1, 0, 0);
     exportCtx.filter = 'none';
 
-    // 3. DO THE MATH: Figure out where to draw the stickers
     const cameraBox = document.querySelector('.camera-inner');
     if (cameraBox && activeStickers.length > 0) {
-      
-      // Calculate the size difference between the screen and the raw photo
       const scaleX = exportCanvas.width / cameraBox.clientWidth;
       const scaleY = exportCanvas.height / cameraBox.clientHeight;
 
-      // Load all sticker images into memory
       const loadedImages = await Promise.all(activeStickers.map(stk => {
         return new Promise((resolve) => {
           const img = new Image();
@@ -100,55 +163,56 @@ export default function App() {
         });
       }));
 
-      // Draw each sticker onto the final canvas!
       loadedImages.forEach(({ img, stk }) => {
-        const domSize = 100; // Base width of our stickers
-        
-        // Find the exact center point on the canvas
+        const domSize = 100;
         const centerX = (stk.x + domSize / 2) * scaleX;
         const centerY = (stk.y + domSize / 2) * scaleY;
-        
-        // Find the exact scaled size
         const drawSizeX = domSize * scaleX * stk.scale;
         const drawSizeY = domSize * scaleY * stk.scale;
 
-        exportCtx.translate(centerX, centerY); // Move to the center
-        exportCtx.rotate((stk.rotation * Math.PI) / 180); // Spin it
-        exportCtx.drawImage(img, -drawSizeX / 2, -drawSizeY / 2, drawSizeX, drawSizeY); // Draw it!
-        exportCtx.setTransform(1, 0, 0, 1, 0, 0); // Reset for the next sticker
+        exportCtx.translate(centerX, centerY);
+        exportCtx.rotate((stk.rotation * Math.PI) / 180);
+        exportCtx.drawImage(img, -drawSizeX / 2, -drawSizeY / 2, drawSizeX, drawSizeY);
+        exportCtx.setTransform(1, 0, 0, 1, 0, 0);
       });
     }
   };
 
-  // We had to add "async" here so it can wait for the drawing!
   const takeSinglePhoto = async () => {
     if (!videoRef.current || videoRef.current.videoWidth === 0) return;
     const exportCanvas = document.createElement('canvas');
     const exportCtx = exportCanvas.getContext('2d');
-    
-    await drawBaseImage(exportCanvas, exportCtx); // WAIT for drawing
-    
+
+    await drawBaseImage(exportCanvas, exportCtx);
+
     const imageUrl = exportCanvas.toDataURL('image/png');
     setPhotos(prevPhotos => [{ id: Date.now(), url: imageUrl, note: '', date: new Date().toLocaleString(), type: 'single' }, ...prevPhotos]);
     setActiveStickers([]);
     setEditingStickerId(null);
+    sounds.print();
+    setPrint({ id: Date.now(), url: imageUrl });
+    setConfettiTrigger((n) => n + 1);
+    addToast('Photo captured! So cute! 💖', 'success');
   };
 
   const startTimer = () => {
-    if (countdown !== null || isTakingStrip) return; 
-    setCountdown(3); 
-    setEditingStickerId(null); 
+    if (countdown !== null || isTakingStrip) return;
+    sounds.countdown();
+    setCountdown(3);
+    setEditingStickerId(null);
     let timerNumber = 3;
     const interval = setInterval(() => {
       timerNumber -= 1;
       if (timerNumber > 0) {
-        setCountdown(timerNumber); 
+        setCountdown(timerNumber);
+        sounds.countdown();
       } else {
-        clearInterval(interval); 
-        setCountdown(null); 
-        takeSinglePhoto(); 
+        clearInterval(interval);
+        setCountdown(null);
+        sounds.shutter();
+        takeSinglePhoto();
       }
-    }, 1000); 
+    }, 1000);
   };
 
   const startStrip = async () => {
@@ -161,14 +225,16 @@ export default function App() {
     for (let i = 1; i <= 4; i++) {
       for (let c = 3; c > 0; c--) {
         setCountdown(c);
+        sounds.countdown();
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
       setCountdown(null);
-      
+      sounds.shutter();
+
       const exportCanvas = document.createElement('canvas');
-      await drawBaseImage(exportCanvas, exportCanvas.getContext('2d')); // WAIT for drawing
+      await drawBaseImage(exportCanvas, exportCanvas.getContext('2d'));
       capturedUrls.push(exportCanvas.toDataURL('image/png'));
-      
+
       await new Promise(resolve => setTimeout(resolve, 500));
     }
 
@@ -179,45 +245,128 @@ export default function App() {
     stripCanvas.width = imgWidth + (padding * 2);
     stripCanvas.height = (imgHeight * 4) + (padding * 5) + bottomSpace;
     sCtx.fillStyle = '#FFFFFF'; sCtx.fillRect(0, 0, stripCanvas.width, stripCanvas.height);
-    
+
     const loadedImages = await Promise.all(capturedUrls.map(url => {
       return new Promise(res => { const img = new Image(); img.onload = () => res(img); img.src = url; });
     }));
-    
+
     loadedImages.forEach((img, index) => {
       sCtx.drawImage(img, padding, padding + (index * (imgHeight + padding)), imgWidth, imgHeight);
     });
-    
+
     sCtx.fillStyle = '#FFB6C1'; sCtx.font = 'bold 40px Quicksand, sans-serif'; sCtx.textAlign = 'center';
     sCtx.fillText('✨ My Cute Photobooth ✨', stripCanvas.width / 2, stripCanvas.height - 40);
-    
-    setPhotos(prev => [{ id: Date.now(), url: stripCanvas.toDataURL('image/png'), note: '', date: new Date().toLocaleString(), type: 'strip' }, ...prev]);
+
+    const stripUrl = stripCanvas.toDataURL('image/png');
+    setPhotos(prev => [{ id: Date.now(), url: stripUrl, note: '', date: new Date().toLocaleString(), type: 'strip' }, ...prev]);
     setIsTakingStrip(false);
+    sounds.success();
+    setPrint({ id: Date.now(), url: stripUrl });
+    setConfettiTrigger((n) => n + 1);
+    addToast('4-pic strip printed! 🎞️', 'success');
   };
 
   const deletePhoto = (idToRemove) => setPhotos(prevPhotos => prevPhotos.filter(photo => photo.id !== idToRemove));
   const updateNote = (id, newNoteText) => setPhotos(prevPhotos => prevPhotos.map(photo => (photo.id === id ? { ...photo, note: newNoteText } : photo)));
 
+  // Filter definitions for ribbon tabs
+  const FILTERS = [
+    { id: 'none', label: 'Normal', icon: '🌸', css: 'none' },
+    { id: 'bw', label: 'B&W', icon: '🖤', css: 'grayscale(100%)' },
+    { id: 'vintage', label: 'Vintage', icon: '🕰️', css: 'sepia(80%)' },
+    { id: 'pink', label: 'Pink', icon: '🎀', css: 'sepia(50%) hue-rotate(290deg) saturate(150%)' },
+    { id: 'invert', label: 'Invert', icon: '👽', css: 'invert(100%)' },
+    { id: 'blur', label: 'Soft Blur', icon: '☁️', css: 'blur(4px)' },
+    { id: 'pop', label: 'Pop', icon: '🍿', css: 'contrast(150%) brightness(110%)' },
+    { id: 'cool', label: 'Cool Ice', icon: '🧊', css: 'hue-rotate(180deg) saturate(150%)' },
+  ];
+
+  const filteredStickers = availableStickers.filter((name) => {
+    const inCategory = stickerCategory === 'all' || STICKER_META[name] === stickerCategory;
+    const matchesSearch = name.toLowerCase().includes(stickerSearch.toLowerCase());
+    return inCategory && matchesSearch;
+  });
+
+  const setFilterFromCss = (css) => setFilter(css);
+
   return (
-    <div className="app-main-layout">
-      
+    <div className={`app-main-layout theme-${theme}`}>
+      <FloatingBackground />
+      <CursorTrail />
+      <Mascot />
+      <Confetti trigger={confettiTrigger} />
+      <PolaroidPrint print={print} />
+      <Toasts toasts={toasts} onDismiss={(id) => setToasts((p) => p.filter((t) => t.id !== id))} />
+
       <nav className="side-nav">
         <div className="nav-logo">✨</div>
-        <button className={`nav-btn ${currentView === 'booth' ? 'active' : ''}`} onClick={() => setCurrentView('booth')}>📸<br/>Booth</button>
-        <button className={`nav-btn ${currentView === 'scrapbook' ? 'active' : ''}`} onClick={() => setCurrentView('scrapbook')}>📚<br/>Scrapbook</button>
+        <button
+          className={`nav-btn ${currentView === 'booth' ? 'active' : ''}`}
+          onClick={() => { setCurrentView('booth'); sounds.click(); }}
+        >
+          <span className="nav-icon">📸</span><br />Booth
+        </button>
+        <button
+          className={`nav-btn ${currentView === 'scrapbook' ? 'active' : ''}`}
+          onClick={() => { setCurrentView('scrapbook'); sounds.click(); }}
+        >
+          <span className="nav-icon">📚</span><br />Scrapbook
+        </button>
+        <div className="nav-spacer" />
+        <button className="sound-toggle" onClick={toggleSound} title="Toggle sounds">
+          {soundsOn ? '🔊' : '🔇'}
+        </button>
       </nav>
 
       {currentView === 'booth' && (
         <div className="center-stage animate-fade-in">
-          <h1>My Cute Photobooth</h1>
-          
+          <h1 className="hero-title">
+            <span className="title-sparkle">✨</span> My Cute Photobooth{' '}
+            <span className="title-sparkle">✨</span>
+          </h1>
+          <p className="hero-sub">Smile! Your memories start here. 💕</p>
+
+          <ThemeSwitcher
+            currentTheme={theme}
+            onSelect={(t) => { setTheme(t.id); sounds.click(); addToast(`${t.name} applied!`, 'sparkle'); }}
+          />
+
+          {/* Ribbon navigation tabs */}
+          <div className="ribbon-tabs">
+            {[
+              { id: 'stickers', label: '🎀 Stickers' },
+              { id: 'filters', label: '🎨 Filters' },
+              { id: 'effects', label: '✨ Effects' },
+            ].map((t) => (
+              <button
+                key={t.id}
+                className={`ribbon-tab ${activeTab === t.id ? 'active' : ''}`}
+                onClick={() => { setActiveTab(t.id); sounds.click(); }}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+
           <div className="camera-box">
             {countdown !== null && <div className="countdown-overlay">{countdown}</div>}
-            {isTakingStrip && countdown === null && <div className="countdown-overlay" style={{fontSize: '4rem'}}>📸 Snap!</div>}
-            
-            <div className="camera-inner" onClick={(e) => { if (e.target.tagName !== 'IMG') setEditingStickerId(null); }}>
+            {isTakingStrip && countdown === null && <div className="countdown-overlay" style={{ fontSize: '4rem' }}>📸 Snap!</div>}
+
+            <div
+              className={`camera-inner ${cameraStarted ? 'is-on' : ''} ${isCameraOn ? 'camera-live' : ''}`}
+              onClick={(e) => { if (e.target.tagName !== 'IMG') setEditingStickerId(null); }}
+            >
+              {!cameraStarted && (
+                <div className="camera-placeholder">
+                  <span className="placeholder-camera">📷</span>
+                  <span className="placeholder-stars">⭐</span>
+                  <span className="placeholder-stars s2">✨</span>
+                  <span className="placeholder-stars s3">💖</span>
+                  <p>Smile! Your memories start here.</p>
+                </div>
+              )}
               {activeStickers.map(stk => (
-                <img 
+                <img
                   key={stk.id} src={`/${stk.name}`} alt="Sticker"
                   className={`sticker-overlay ${editingStickerId === stk.id ? 'is-editing' : ''}`}
                   style={{ left: stk.x, top: stk.y, transform: `scale(${stk.scale}) rotate(${stk.rotation}deg)` }}
@@ -239,34 +388,82 @@ export default function App() {
               </div>
             </div>
           ) : (
-            <div className="sticker-panel">
-              <h3>🎀 Add a Sticker!</h3>
-              <div className="sticker-list">
-                {availableStickers.map(stkName => (
-                  <button key={stkName} className="sticker-pick-btn" onClick={() => addSticker(stkName)}>
-                    <img src={`/${stkName}`} alt="Sticker" />
-                  </button>
-                ))}
+            (activeTab === 'stickers') && (
+              <div className="sticker-panel">
+                <h3>🎀 Add a Sticker!</h3>
+                <div className="sticker-toolbar">
+                  <input
+                    className="sticker-search"
+                    type="text"
+                    placeholder="Search stickers..."
+                    value={stickerSearch}
+                    onChange={(e) => setStickerSearch(e.target.value)}
+                  />
+                </div>
+                <div className="sticker-categories">
+                  {STICKER_CATEGORIES.map((c) => (
+                    <button
+                      key={c.id}
+                      className={`category-pill ${stickerCategory === c.id ? 'active' : ''}`}
+                      onClick={() => setStickerCategory(c.id)}
+                    >
+                      {c.label}
+                    </button>
+                  ))}
+                </div>
+                <div className="sticker-list">
+                  {filteredStickers.map(stkName => (
+                    <button key={stkName} className="sticker-pick-btn" onClick={() => addSticker(stkName)}>
+                      <img src={`/${stkName}`} alt="Sticker" />
+                    </button>
+                  ))}
+                  {filteredStickers.length === 0 && <span className="no-stickers">No stickers found 🥺</span>}
+                </div>
               </div>
+            )
+          )}
+
+          {activeTab === 'filters' && (
+            <div className="filter-row">
+              {FILTERS.map((f) => (
+                <button
+                  key={f.id}
+                  className={`filter-btn ${filter === f.css ? 'selected' : ''} ${f.id === 'pink' ? 'pink-f' : ''}`}
+                  onClick={() => { setFilterFromCss(f.css); sounds.click(); }}
+                  title={f.label}
+                >
+                  <span className="filter-icon">{f.icon}</span>
+                  <span className="filter-label">{f.label}</span>
+                </button>
+              ))}
             </div>
           )}
 
-          {/* 🌟 THE NEW 8-BUTTON FILTER ROW */}
-          <div className="filter-row">
-            <button className="filter-btn" onClick={() => setFilter('none')} title="Normal">🌸</button>
-            <button className="filter-btn" onClick={() => setFilter('grayscale(100%)')} title="B&W">🖤</button>
-            <button className="filter-btn" onClick={() => setFilter('sepia(80%)')} title="Vintage">🕰️</button>
-            <button className="filter-btn pink-f" onClick={() => setFilter('sepia(50%) hue-rotate(290deg) saturate(150%)')} title="Pink">🎀</button>
-            
-            <button className="filter-btn" onClick={() => setFilter('invert(100%)')} title="Invert" style={{borderColor: '#b2fba5', color: '#888'}}>👽</button>
-            <button className="filter-btn" onClick={() => setFilter('blur(4px)')} title="Soft Blur" style={{borderColor: '#aec6cf', color: '#888'}}>☁️</button>
-            <button className="filter-btn" onClick={() => setFilter('contrast(150%) brightness(110%)')} title="Pop Contrast" style={{borderColor: '#ffd1dc', color: '#888'}}>🍿</button>
-            <button className="filter-btn" onClick={() => setFilter('hue-rotate(180deg) saturate(150%)')} title="Cool Ice" style={{borderColor: '#e0f7fa', color: '#888'}}>🧊</button>
-          </div>
+          {activeTab === 'effects' && (
+            <div className="effects-panel">
+              <p>✨ More effects coming soon! Keep shining! ✨</p>
+            </div>
+          )}
 
           <div className="action-button-row">
-            <button className="capture-btn giant-snap-btn" onClick={startTimer} disabled={isTakingStrip}>📸 Single Pic</button>
-            <button className="capture-btn giant-snap-btn strip-btn" onClick={startStrip} disabled={isTakingStrip}>🎞️ 4-Pic Strip!</button>
+            <motion.button
+              className="capture-btn giant-snap-btn"
+              onClick={startTimer}
+              disabled={isTakingStrip}
+              whileTap={{ scale: 0.92 }}
+              whileHover={{ y: -4, scale: 1.03 }}
+            >
+              📸 Single Pic
+            </motion.button>
+            <motion.button
+              className="capture-btn giant-snap-btn strip-btn"
+              onClick={startStrip}
+              disabled={isTakingStrip}
+              whileTap={{ scale: 0.92 }}
+              whileHover={{ y: -4, scale: 1.03 }}
+            >
+              🎞️ 4-Pic Strip!
+            </motion.button>
           </div>
 
           <canvas ref={canvasRef} style={{ display: 'none' }}></canvas>
@@ -275,23 +472,31 @@ export default function App() {
 
       {currentView === 'scrapbook' && (
         <div className="center-stage scrapbook-stage animate-fade-in">
-          <h2>📚 My Scrapbook</h2>
+          <h2 className="hero-title">📚 My Scrapbook</h2>
           {photos.length === 0 ? (
             <p className="empty-text">Your scrapbook is empty! Go take some cute photos! 📸</p>
           ) : (
             <div className="scrapbook-grid">
               {photos.map((photo) => (
-                <div key={photo.id} className="scrapbook-card-v2">
+                <motion.div
+                  key={photo.id}
+                  className="scrapbook-card-v2"
+                  whileHover={{ y: -8, rotate: -1 }}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
+                  <div className="washi-tape left" />
+                  <div className="washi-tape right" />
                   <div className="card-image-container">
                     <img src={photo.url} alt="Memory" className="scrapbook-img" />
                     <button onClick={() => deletePhoto(photo.id)} className="delete-memory-btn">❌</button>
                   </div>
                   <div className="card-details">
-                    <small className="date-text">{photo.date}</small>
+                    <small className="date-text">✍️ {photo.date}</small>
                     <textarea className="memory-input" value={photo.note} placeholder="Write your memory here... ✨" onChange={(e) => updateNote(photo.id, e.target.value)} />
                     <a href={photo.url} download={`memory-${photo.id}.png`} className="download-memory-btn">⬇️ Download Photo</a>
                   </div>
-                </div>
+                </motion.div>
               ))}
             </div>
           )}
